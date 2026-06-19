@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../models/kategoria.dart';
 import '../models/miejscowka.dart';
 import '../services/supabase_service.dart';
+import '../widgets/lokalizacja_picker.dart';
+import '../widgets/czas_otwarcia_row.dart';
+import '../widgets/kategoria_dropdown.dart';
 
 class AddScreen extends StatefulWidget {
   final Miejscowka? miejscowkaDoEdycji;
@@ -18,7 +20,6 @@ class _AddScreenState extends State<AddScreen> {
   final _formKey = GlobalKey<FormState>();
   final SupabaseService _supabaseService = SupabaseService();
 
-  // Kontrolery pól tekstowych
   final _nazwaCtrl = TextEditingController();
   final _opisCtrl = TextEditingController();
   final _zdjecieCtrl = TextEditingController();
@@ -41,7 +42,7 @@ class _AddScreenState extends State<AddScreen> {
       final m = widget.miejscowkaDoEdycji!;
       _nazwaCtrl.text = m.nazwa;
       _opisCtrl.text = m.opis;
-      
+
       if (m.godzinyOtwarcia.isNotEmpty && m.godzinyOtwarcia != 'Brak danych') {
         try {
           final parts = m.godzinyOtwarcia.split(' - ');
@@ -57,7 +58,7 @@ class _AddScreenState extends State<AddScreen> {
           debugPrint('Błąd parsowania godzin: $e');
         }
       }
-      
+
       if (m.zdjeciaUrl.isNotEmpty) {
         _zdjecieCtrl.text = m.zdjeciaUrl.join(', ');
       }
@@ -136,15 +137,13 @@ class _AddScreenState extends State<AddScreen> {
       }
 
       if (mounted) {
-        _pokazSnackBar(widget.miejscowkaDoEdycji != null 
-            ? 'Miejscówka zaktualizowana pomyślnie!' 
+        _pokazSnackBar(widget.miejscowkaDoEdycji != null
+            ? 'Miejscówka zaktualizowana pomyślnie!'
             : 'Miejscówka dodana pomyślnie!');
         Navigator.of(context).pop();
       }
     } catch (e) {
-      if (mounted) {
-        _pokazSnackBar('Błąd zapisu: $e', blad: true);
-      }
+      if (mounted) _pokazSnackBar('Błąd zapisu: $e', blad: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -188,9 +187,7 @@ class _AddScreenState extends State<AddScreen> {
                   Navigator.of(context).pop();
                 }
               } catch (e) {
-                if (mounted) {
-                  _pokazSnackBar('Błąd usuwania: $e', blad: true);
-                }
+                if (mounted) _pokazSnackBar('Błąd usuwania: $e', blad: true);
               } finally {
                 if (mounted) setState(() => _isLoading = false);
               }
@@ -200,93 +197,6 @@ class _AddScreenState extends State<AddScreen> {
         ],
       ),
     );
-  }
-
-  void _pokazDialogDodawaniaKategorii() {
-    final nazwaCtrl = TextEditingController();
-    bool dialogLoading = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1E1E1E),
-              title: const Text(
-                'Nowa kategoria',
-                style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nazwaCtrl,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Nazwa kategorii',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      enabledBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.tealAccent),
-                      ),
-                    ),
-                    enabled: !dialogLoading,
-                  ),
-                  if (dialogLoading) ...[
-                    const SizedBox(height: 20),
-                    const Center(
-                      child: CircularProgressIndicator(color: Colors.tealAccent),
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: dialogLoading ? null : () => Navigator.pop(ctx),
-                  child: const Text('Anuluj', style: TextStyle(color: Colors.grey)),
-                ),
-                TextButton(
-                  onPressed: dialogLoading
-                      ? null
-                      : () async {
-                          final nazwa = nazwaCtrl.text.trim();
-                          if (nazwa.isEmpty) return;
-
-                          setDialogState(() => dialogLoading = true);
-
-                          try {
-                            final nowaKat = await _supabaseService.dodajKategorie(nazwa);
-                            if (mounted) {
-                              setState(() {
-                                _kategorie.add(nowaKat);
-                                _wybranaKategoriaId = nowaKat.id;
-                              });
-                            }
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          } catch (e) {
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                SnackBar(
-                                  content: Text('Błąd: $e'),
-                                  backgroundColor: Colors.redAccent,
-                                ),
-                              );
-                              setDialogState(() => dialogLoading = false);
-                            }
-                          }
-                        },
-                  child: const Text('Zapisz', style: TextStyle(color: Colors.tealAccent)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((_) => nazwaCtrl.dispose());
   }
 
   @override
@@ -315,9 +225,7 @@ class _AddScreenState extends State<AddScreen> {
         ),
       ),
       body: _loadingKategorie
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.tealAccent),
-            )
+          ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Form(
@@ -325,223 +233,33 @@ class _AddScreenState extends State<AddScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ── Sekcja: Podstawowe info ──────────────────────────────
                     _naglowekSekcji('Podstawowe informacje'),
                     const SizedBox(height: 12),
                     _pole(
                       kontroler: _nazwaCtrl,
                       label: 'Nazwa miejsca',
                       ikona: Icons.place,
-                      walidator: (v) => (v == null || v.trim().isEmpty)
-                          ? 'Podaj nazwę'
-                          : null,
+                      walidator: (v) => (v == null || v.trim().isEmpty) ? 'Podaj nazwę' : null,
                     ),
                     const SizedBox(height: 14),
-                    _pole(
-                      kontroler: _opisCtrl,
-                      label: 'Opis',
-                      ikona: Icons.notes,
-                      maxLines: 3,
-                    ),
+                    _pole(kontroler: _opisCtrl, label: 'Opis', ikona: Icons.notes, maxLines: 3),
                     const SizedBox(height: 24),
 
-                    // ── Sekcja: Lokalizacja (mini-mapa) ─────────────────────
                     _naglowekSekcji('Lokalizacja'),
                     const SizedBox(height: 8),
-                    Text(
-                      'Wybierz lokalizację na mapie:',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Wizualna informacja o wybranym punkcie
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: wybranaLokalizacja != null
-                          ? Container(
-                              key: const ValueKey('coords'),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.tealAccent.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.tealAccent.withValues(
-                                    alpha: 0.4,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.check_circle,
-                                    color: Colors.tealAccent,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Lat: ${wybranaLokalizacja!.latitude.toStringAsFixed(5)}'
-                                      '  |  Lng: ${wybranaLokalizacja!.longitude.toStringAsFixed(5)}',
-                                      style: const TextStyle(
-                                        color: Colors.tealAccent,
-                                        fontSize: 13,
-                                        fontFamily: 'monospace',
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          : Container(
-                              key: const ValueKey('no-coords'),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Colors.orange.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.touch_app,
-                                    color: Colors.orange[300],
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Kliknij w mapę, aby wybrać punkt',
-                                    style: TextStyle(
-                                      color: Colors.orange[300],
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                    ),
-
-                    // Mini-mapa interaktywna
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: SizedBox(
-                        height: 250,
-                        child: FlutterMap(
-                          options: MapOptions(
-                            initialCenter: const LatLng(50.0614, 19.9372),
-                            initialZoom: 12,
-                            onTap: (tapPosition, point) {
-                              setState(() {
-                                wybranaLokalizacja = point;
-                              });
-                            },
-                          ),
-                          children: [
-                            TileLayer(
-                              urlTemplate:
-                                  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                              subdomains: const ['a', 'b', 'c', 'd'],
-                              userAgentPackageName: 'com.example.miejscowy_app',
-                            ),
-                            if (wybranaLokalizacja != null)
-                              MarkerLayer(
-                                markers: [
-                                  Marker(
-                                    point: wybranaLokalizacja!,
-                                    width: 44,
-                                    height: 44,
-                                    child: const Icon(
-                                      Icons.location_on,
-                                      color: Colors.tealAccent,
-                                      size: 44,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
+                    LokalizacjaPicker(
+                      wybranaLokalizacja: wybranaLokalizacja,
+                      onLocationChanged: (point) => setState(() => wybranaLokalizacja = point),
                     ),
                     const SizedBox(height: 24),
 
-                    // ── Sekcja: Szczegóły ────────────────────────────────────
                     _naglowekSekcji('Szczegóły'),
                     const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final picked = await showTimePicker(
-                                context: context,
-                                initialTime: czasOtwarcia ?? const TimeOfDay(hour: 9, minute: 0),
-                                builder: (BuildContext context, Widget? child) {
-                                  return MediaQuery(
-                                    data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                                    child: child!,
-                                  );
-                                },
-                              );
-                              if (picked != null) {
-                                setState(() => czasOtwarcia = picked);
-                              }
-                            },
-                            icon: const Icon(Icons.access_time, color: Colors.tealAccent, size: 20),
-                            label: Text(
-                              czasOtwarcia != null
-                                  ? 'Od: ${czasOtwarcia!.hour.toString().padLeft(2, '0')}:${czasOtwarcia!.minute.toString().padLeft(2, '0')}'
-                                  : 'Otwarcie',
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.grey[800]!),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () async {
-                              final picked = await showTimePicker(
-                                context: context,
-                                initialTime: czasZamkniecia ?? const TimeOfDay(hour: 18, minute: 0),
-                                builder: (BuildContext context, Widget? child) {
-                                  return MediaQuery(
-                                    data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                                    child: child!,
-                                  );
-                                },
-                              );
-                              if (picked != null) {
-                                setState(() => czasZamkniecia = picked);
-                              }
-                            },
-                            icon: const Icon(Icons.access_time_filled, color: Colors.tealAccent, size: 20),
-                            label: Text(
-                              czasZamkniecia != null
-                                  ? 'Do: ${czasZamkniecia!.hour.toString().padLeft(2, '0')}:${czasZamkniecia!.minute.toString().padLeft(2, '0')}'
-                                  : 'Zamknięcie',
-                              style: const TextStyle(color: Colors.white, fontSize: 13),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: BorderSide(color: Colors.grey[800]!),
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                      ],
+                    CzasOtwarciaRow(
+                      czasOtwarcia: czasOtwarcia,
+                      czasZamkniecia: czasZamkniecia,
+                      onOtwarcieChanged: (t) => setState(() => czasOtwarcia = t),
+                      onZamkniecieChanged: (t) => setState(() => czasZamkniecia = t),
                     ),
                     const SizedBox(height: 14),
                     _pole(
@@ -551,71 +269,17 @@ class _AddScreenState extends State<AddScreen> {
                       typ: TextInputType.url,
                     ),
                     const SizedBox(height: 14),
-
-                    // ── Dropdown kategorii ───────────────────────────────────
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            key: ValueKey(_wybranaKategoriaId),
-                            initialValue: _wybranaKategoriaId,
-                            decoration: InputDecoration(
-                              labelText: 'Kategoria',
-                              labelStyle: TextStyle(color: Colors.grey[500]),
-                              prefixIcon: Icon(
-                                Icons.category,
-                                color: Colors.grey[600],
-                              ),
-                              filled: true,
-                              fillColor: const Color(0xFF1E1E1E),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey[800]!),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(color: Colors.grey[800]!),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(
-                                  color: Colors.tealAccent,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                            dropdownColor: const Color(0xFF1E1E1E),
-                            style: const TextStyle(color: Colors.white),
-                            hint: Text(
-                              'Wybierz kategorię',
-                              style: TextStyle(color: Colors.grey[600]),
-                            ),
-                            items: _kategorie.map((kat) {
-                              return DropdownMenuItem<String>(
-                                value: kat.id,
-                                child: Text(kat.nazwa),
-                              );
-                            }).toList(),
-                            onChanged: (val) =>
-                                setState(() => _wybranaKategoriaId = val),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(
-                            Icons.add_circle,
-                            color: Colors.tealAccent,
-                            size: 30,
-                          ),
-                          tooltip: 'Dodaj nową kategorię',
-                          onPressed: _pokazDialogDodawaniaKategorii,
-                        ),
-                      ],
+                    KategoriaDropdown(
+                      kategorie: _kategorie,
+                      wybranaKategoriaId: _wybranaKategoriaId,
+                      onChanged: (val) => setState(() => _wybranaKategoriaId = val),
+                      onDodajKategorie: _supabaseService.dodajKategorie,
+                      onKategoriaAdded: (nowaKat) => setState(() {
+                        _kategorie.add(nowaKat);
+                        _wybranaKategoriaId = nowaKat.id;
+                      }),
                     ),
                     const SizedBox(height: 36),
-
-                    // ── Przycisk Zapisz ──────────────────────────────────────
                     SizedBox(
                       width: double.infinity,
                       height: 54,
@@ -625,28 +289,17 @@ class _AddScreenState extends State<AddScreen> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(
-                                  color: Colors.black,
-                                  strokeWidth: 2,
-                                ),
+                                child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2),
                               )
                             : const Icon(Icons.save_alt, color: Colors.black),
                         label: Text(
                           _isLoading ? 'Zapisywanie...' : 'Zapisz',
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black),
                         ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.tealAccent,
-                          disabledBackgroundColor: Colors.tealAccent.withValues(
-                            alpha: 0.5,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
+                          disabledBackgroundColor: Colors.tealAccent.withValues(alpha: 0.5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
                       ),
                     ),

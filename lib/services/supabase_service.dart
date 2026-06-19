@@ -4,7 +4,6 @@ import '../models/kategoria.dart';
 import '../models/miejscowka.dart';
 
 class SupabaseService {
-  // ── Pobieranie wszystkich miejscówek (z JOIN na kategorie) ─────────────────
   Future<List<Miejscowka>> pobierzMiejscowki() async {
     try {
       final List<dynamic> response = await Supabase.instance.client
@@ -12,10 +11,7 @@ class SupabaseService {
           .select('*, kategorie(*)');
 
       return response
-          .map(
-            (json) =>
-                Miejscowka.fromJson(Map<String, dynamic>.from(json as Map)),
-          )
+          .map((json) => Miejscowka.fromJson(Map<String, dynamic>.from(json as Map)))
           .toList();
     } catch (e, stackTrace) {
       debugPrint('Błąd podczas pobierania miejscówek: $e');
@@ -24,7 +20,6 @@ class SupabaseService {
     }
   }
 
-  // ── Pobieranie wszystkich kategorii ────────────────────────────────────────
   Future<List<Kategoria>> pobierzKategorie() async {
     try {
       final List<dynamic> response = await Supabase.instance.client
@@ -32,10 +27,7 @@ class SupabaseService {
           .select('*');
 
       return response
-          .map(
-            (json) =>
-                Kategoria.fromJson(Map<String, dynamic>.from(json as Map)),
-          )
+          .map((json) => Kategoria.fromJson(Map<String, dynamic>.from(json as Map)))
           .toList();
     } catch (e, stackTrace) {
       debugPrint('Błąd podczas pobierania kategorii: $e');
@@ -44,7 +36,6 @@ class SupabaseService {
     }
   }
 
-  // ── Dodawanie nowej miejscówki ──────────────────────────────────────────────
   Future<void> dodajMiejscowke({
     required String nazwa,
     required String opis,
@@ -71,7 +62,6 @@ class SupabaseService {
     }
   }
 
-  // ── Dodawanie nowej kategorii ────────────────────────────────────────────────
   Future<Kategoria> dodajKategorie(String nazwa) async {
     try {
       final response = await Supabase.instance.client
@@ -86,7 +76,7 @@ class SupabaseService {
       rethrow;
     }
   }
-  // ── Edycja miejscówki ────────────────────────────────────────────────────────
+
   Future<void> edytujMiejscowke(String id, Map<String, dynamic> dane) async {
     try {
       await Supabase.instance.client.from('miejscowki').update(dane).eq('id', id);
@@ -97,7 +87,6 @@ class SupabaseService {
     }
   }
 
-  // ── Usuwanie miejscówki ──────────────────────────────────────────────────────
   Future<void> usunMiejscowke(String id) async {
     try {
       await Supabase.instance.client.from('miejscowki').delete().eq('id', id);
@@ -108,7 +97,6 @@ class SupabaseService {
     }
   }
 
-  // ── Usuwanie kategorii ───────────────────────────────────────────────────────
   Future<void> usunKategorie(String id) async {
     try {
       await Supabase.instance.client.from('kategorie').delete().eq('id', id);
@@ -119,7 +107,6 @@ class SupabaseService {
     }
   }
 
-  // ── Edycja kategorii ─────────────────────────────────────────────────────────
   Future<void> edytujKategorie(String id, String nowaNazwa) async {
     try {
       await Supabase.instance.client

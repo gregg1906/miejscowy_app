@@ -24,13 +24,10 @@ class Miejscowka {
   });
 
   factory Miejscowka.fromJson(Map<String, dynamic> json) {
-    // Safe casting for zdjecia_url List
     final rawZdjecia = json['zdjecia_url'];
-    final List<String> zdjeciaList = rawZdjecia != null
-        ? List<String>.from(rawZdjecia as List)
-        : [];
+    final List<String> zdjeciaList =
+        rawZdjecia != null ? List<String>.from(rawZdjecia as List) : [];
 
-    // Parse kategoria relation if present in JSON under 'kategorie'
     Kategoria? kategoriaObj;
     if (json['kategorie'] != null) {
       if (json['kategorie'] is Map) {

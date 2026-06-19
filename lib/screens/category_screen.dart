@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/kategoria.dart';
 import '../services/supabase_service.dart';
+import '../widgets/karta_kategorii.dart';
+import '../widgets/dark_dialog_field.dart';
 
 class CategoryScreen extends StatefulWidget {
   const CategoryScreen({super.key});
@@ -30,184 +32,46 @@ class _CategoryScreenState extends State<CategoryScreen> {
     }
   }
 
-  // ── Dialog: Dodaj nową kategorię ─────────────────────────────────────────────
   void _pokazDialogDodawania() {
-    final ctrl = TextEditingController();
-    bool dialogLoading = false;
-
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1E1E1E),
-              title: const Text(
-                'Nowa kategoria',
-                style: TextStyle(
-                    color: Colors.tealAccent, fontWeight: FontWeight.bold),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: ctrl,
-                    autofocus: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Nazwa kategorii',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      enabledBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.tealAccent),
-                      ),
-                    ),
-                    enabled: !dialogLoading,
-                  ),
-                  if (dialogLoading) ...[
-                    const SizedBox(height: 20),
-                    const Center(
-                      child: CircularProgressIndicator(color: Colors.tealAccent),
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: dialogLoading ? null : () => Navigator.pop(ctx),
-                  child: const Text('Anuluj', style: TextStyle(color: Colors.grey)),
-                ),
-                TextButton(
-                  onPressed: dialogLoading
-                      ? null
-                      : () async {
-                          final nazwa = ctrl.text.trim();
-                          if (nazwa.isEmpty) return;
-                          setDialogState(() => dialogLoading = true);
-                          try {
-                            final nowaKat =
-                                await _supabaseService.dodajKategorie(nazwa);
-                            if (mounted) {
-                              setState(() => _kategorie.add(nowaKat));
-                            }
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          } catch (e) {
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                                content: Text('Błąd: $e'),
-                                backgroundColor: Colors.redAccent,
-                              ));
-                              setDialogState(() => dialogLoading = false);
-                            }
-                          }
-                        },
-                  child: const Text('Dodaj',
-                      style: TextStyle(color: Colors.tealAccent)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((_) => ctrl.dispose());
+      builder: (_) => DarkDialogField(
+        tytul: 'Nowa kategoria',
+        tytulKolor: Colors.tealAccent,
+        hintText: 'Nazwa kategorii',
+        labelPrzycisku: 'Dodaj',
+        onSubmit: (nazwa) async {
+          final nowaKat = await _supabaseService.dodajKategorie(nazwa);
+          if (mounted) setState(() => _kategorie.add(nowaKat));
+        },
+      ),
+    );
   }
 
-  // ── Dialog: Edytuj kategorię ─────────────────────────────────────────────────
   void _pokazDialogEdycji(Kategoria kat) {
-    final ctrl = TextEditingController(text: kat.nazwa);
-    bool dialogLoading = false;
-
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1E1E1E),
-              title: const Text(
-                'Edytuj kategorię',
-                style: TextStyle(
-                    color: Colors.tealAccent, fontWeight: FontWeight.bold),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: ctrl,
-                    autofocus: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: InputDecoration(
-                      hintText: 'Nowa nazwa',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      enabledBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: const UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.tealAccent),
-                      ),
-                    ),
-                    enabled: !dialogLoading,
-                  ),
-                  if (dialogLoading) ...[
-                    const SizedBox(height: 20),
-                    const Center(
-                      child: CircularProgressIndicator(color: Colors.tealAccent),
-                    ),
-                  ],
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: dialogLoading ? null : () => Navigator.pop(ctx),
-                  child: const Text('Anuluj', style: TextStyle(color: Colors.grey)),
-                ),
-                TextButton(
-                  onPressed: dialogLoading
-                      ? null
-                      : () async {
-                          final nowaNazwa = ctrl.text.trim();
-                          if (nowaNazwa.isEmpty) return;
-                          setDialogState(() => dialogLoading = true);
-                          try {
-                            await _supabaseService.edytujKategorie(
-                                kat.id, nowaNazwa);
-                            if (mounted) {
-                              setState(() {
-                                final idx =
-                                    _kategorie.indexWhere((k) => k.id == kat.id);
-                                if (idx != -1) {
-                                  _kategorie[idx] =
-                                      Kategoria(id: kat.id, nazwa: nowaNazwa);
-                                }
-                              });
-                            }
-                            if (ctx.mounted) Navigator.pop(ctx);
-                          } catch (e) {
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                                content: Text('Błąd: $e'),
-                                backgroundColor: Colors.redAccent,
-                              ));
-                              setDialogState(() => dialogLoading = false);
-                            }
-                          }
-                        },
-                  child: const Text('Zapisz',
-                      style: TextStyle(color: Colors.tealAccent)),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    ).then((_) => ctrl.dispose());
+      builder: (_) => DarkDialogField(
+        tytul: 'Edytuj kategorię',
+        tytulKolor: Colors.tealAccent,
+        hintText: 'Nowa nazwa',
+        poczatkowaWartosc: kat.nazwa,
+        labelPrzycisku: 'Zapisz',
+        onSubmit: (nowaNazwa) async {
+          await _supabaseService.edytujKategorie(kat.id, nowaNazwa);
+          if (mounted) {
+            setState(() {
+              final idx = _kategorie.indexWhere((k) => k.id == kat.id);
+              if (idx != -1) _kategorie[idx] = Kategoria(id: kat.id, nazwa: nowaNazwa);
+            });
+          }
+        },
+      ),
+    );
   }
 
-  // ── Dialog: Usuń kategorię ───────────────────────────────────────────────────
   void _pokazDialogUsuwania(Kategoria kat) {
     showDialog(
       context: context,
@@ -231,23 +95,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
               Navigator.pop(ctx);
               try {
                 await _supabaseService.usunKategorie(kat.id);
-                if (mounted) {
-                  setState(() => _kategorie.removeWhere((k) => k.id == kat.id));
-                }
+                if (mounted) setState(() => _kategorie.removeWhere((k) => k.id == kat.id));
               } catch (e) {
                 if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text('Błąd usuwania: $e'),
-                    backgroundColor: Colors.redAccent,
-                  ));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Błąd usuwania: $e'), backgroundColor: Colors.redAccent),
+                  );
                 }
               }
             },
-            child: const Text(
-              'Tak, usuń',
-              style: TextStyle(
-                  color: Colors.redAccent, fontWeight: FontWeight.bold),
-            ),
+            child: const Text('Tak, usuń', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -261,8 +118,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
       appBar: AppBar(
         title: const Text(
           'Zarządzaj Kategoriami',
-          style:
-              TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.tealAccent, fontWeight: FontWeight.bold),
         ),
         backgroundColor: const Color(0xFF1A1A1A),
         iconTheme: const IconThemeData(color: Colors.tealAccent),
@@ -280,8 +136,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
         child: const Icon(Icons.add),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Colors.tealAccent))
+          ? const Center(child: CircularProgressIndicator(color: Colors.tealAccent))
           : _kategorie.isEmpty
               ? Center(
                   child: Column(
@@ -298,58 +153,14 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   ),
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: _kategorie.length,
                   itemBuilder: (context, index) {
                     final kat = _kategorie[index];
-                    return Card(
-                      color: const Color(0xFF1E1E1E),
-                      margin: const EdgeInsets.only(bottom: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: Colors.grey[850]!, width: 1),
-                      ),
-                      elevation: 3,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 4),
-                        leading: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.tealAccent.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.label,
-                              color: Colors.tealAccent, size: 20),
-                        ),
-                        title: Text(
-                          kat.nazwa,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit,
-                                  color: Colors.tealAccent, size: 22),
-                              tooltip: 'Edytuj nazwę',
-                              onPressed: () => _pokazDialogEdycji(kat),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete,
-                                  color: Colors.redAccent, size: 22),
-                              tooltip: 'Usuń kategorię',
-                              onPressed: () => _pokazDialogUsuwania(kat),
-                            ),
-                          ],
-                        ),
-                      ),
+                    return KartaKategorii(
+                      kategoria: kat,
+                      onEdit: () => _pokazDialogEdycji(kat),
+                      onDelete: () => _pokazDialogUsuwania(kat),
                     );
                   },
                 ),
